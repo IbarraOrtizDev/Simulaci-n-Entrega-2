@@ -3,7 +3,6 @@ import src.utils as utils
 import src.Servidor as sv
 import src.Temporizador as tmp
 
-
 servidores : sv.Servidor = []
 contador = 0
 
@@ -22,7 +21,7 @@ def main():
 
     print("En servicio")
 
-    #utils.listarUsuario(clientes, 3)
+    utils.listarUsuario(clientes, 3)
 
     temporizador = tmp.Temporizador()
     temporizador.iniciar()
@@ -39,14 +38,11 @@ def main():
         temporizador.detener()
         pass
 
-    #print("Servidores: ", servidores)
-
 def pasarBufer(clientes, segundos):
     global servidores
     global contador
 
     servidores_filtrados = filter(lambda x: x.cliente, servidores)
-
 
     #Obtener menor tiempo de hora de salida de los clientes en servicio
     menorTiempo = min(servidores_filtrados, key=lambda x: x.acomulado)
@@ -61,12 +57,10 @@ def pasarBufer(clientes, segundos):
             clientes[i].tiempoEspera = menorTiempo.acomulado - clientes[i].hllgada
             clientes[i].tiempoEsperaBonificacion = clientes[i].tiempoEspera + clientes[i].bonificacion
 
-    
     menorTiempo.liberarCliente()
 
     #Pasar clientes de estado 1 a 2 si hay un bufer disponible
     fullBuffer(clientes)
-
 
     #Pasar clientes de estado 2 a 3 si hay un servidor disponible, debe ser el mayor en tiempoEsperaBonificacion
     clientesEnBuffer = list(filter(lambda x: x.estado == 2 , clientes))
@@ -74,19 +68,16 @@ def pasarBufer(clientes, segundos):
         mayorTiempo = min(clientesEnBuffer, key=lambda x: x.conteo)
         menorTiempo.setCliente(mayorTiempo)
     
-
-
     # Pasar de estado 1 a 2 si hay un bufer disponible
     fullBuffer(clientes)
 
-    
     clientesEnServicio = list(filter(lambda x: x.estado == 3, clientes))
     clientesEnBuffer = list(filter(lambda x: x.estado == 2, clientes))
     clientesEnLista = list(filter(lambda x: x.estado == 1, clientes))
     clientesEnEspera = list(filter(lambda x: x.estado == 0, clientes))
 
     #Limpiar la consola
-    print("\033[H\033[J")
+    # print("\033[H\033[J")
     print("En espera")
     utils.listarUsuario(clientesEnEspera, 0)
     print('\n')
