@@ -3,22 +3,23 @@ import numpy as np
 import pandas as pd
 
 def listarUsuario(listX : cliente.Cliente = [], status = 0):
+    columns = ['| ID', '| TIPO', '| TELL', '| HLL', '| BONIFICACIÓN',  '| TE', '| TE + Bonificación', '| Conteo']
     if len(listX) == 0:
         return
-    columns = ['| ID', '| TIPO', '| TELL', '| HLL', '| BONIFICACIÓN',  '| TE', '| TE + Bonificación']
+    
 
     if(status != 3):
-        data = filter(lambda x: x.estado == status, listX)
-        data2 = list(map(lambda x: [x.id, x.tipo, x.tiempoLlegada, x.hllgada, x.bonificacion, x.tiempoEspera, x.tiempoEsperaBonificacion], data))
+        data = filter(lambda x: x.estado == status, listX) if status != -1 else listX
+        data2 = list(map(lambda x: [x.id, x.tipo, x.tiempoLlegada, x.hllgada, x.bonificacion, x.tiempoEspera, x.tiempoEsperaBonificacion, x.conteo], data))
         data2 = np.array(data2)
         df = pd.DataFrame(data2, columns=columns)
         print(df)
         return
     
     
-    columnsType = list(set(list(map(lambda x: x.tipo == status, listX))))
+    data = list(filter(lambda x: x.estado == status, listX))
 
-    for i in listX:
+    for i in data:
         print('\n')
         print('TIPO', i.tipo)
         print('HLL', i.hllgada)

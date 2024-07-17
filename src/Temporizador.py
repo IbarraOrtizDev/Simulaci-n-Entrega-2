@@ -22,7 +22,14 @@ class Temporizador:
         while self.corriendo:
             mins, secs = divmod(self.segundos, 60)
             timer = '{:02d}:{:02d}'.format(mins, secs)
-            print(timer, end="\r")
+            print(self.tiempo_transcurrido(), end="\r")
+
             time.sleep(1)
             self.segundos += 1
         print("\n¡Temporizador detenido!")
+    
+    def tiempo_transcurrido(self):
+        horas = self.segundos // 3600
+        minutos = (self.segundos % 3600) // 60
+        segundos = self.segundos % 60
+        return str(horas)+":"+str(minutos)+":"+str(segundos)

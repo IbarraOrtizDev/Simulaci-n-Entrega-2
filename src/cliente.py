@@ -11,6 +11,7 @@ class Cliente:
         self.tiempoEspera = 0
         self.tiempoEsperaBonificacion = 0
         self.tiempoServicio = 0
+        self.conteo = 0
 
     # getters
 

@@ -1,30 +1,28 @@
 import src.generadorClientes as generadorClientes
 import src.utils as utils
 import src.Servidor as sv
-import threading
 import src.Temporizador as tmp
 
 
 servidores : sv.Servidor = []
+contador = 0
 
 def main():
     global servidores
     numUsuarios = int(input("Ingrese el número de usuarios a generar: "))
     clientes = generadorClientes.generar_clientes(numUsuarios)
 
-    for i in range(4):
-        servidores.append(sv.Servidor())
+    numServidores = int(input("Ingrese el número de servidores: "))
 
-    servidores[0].setCliente(clientes[0])
-    servidores[1].setCliente(clientes[1])
-    servidores[2].setCliente(clientes[2])
-    servidores[3].setCliente(clientes[3])
+    for i in range(numServidores):
+        servidores.append(sv.Servidor())
+        servidores[i].setCliente(clientes[i])
 
     utils.listarUsuario(clientes, 0)
 
     print("En servicio")
 
-    utils.listarUsuario(clientes, 3)
+    #utils.listarUsuario(clientes, 3)
 
     temporizador = tmp.Temporizador()
     temporizador.iniciar()
@@ -33,6 +31,7 @@ def main():
         while temporizador.corriendo:
             temporizador.corriendo = pasarBufer(clientes, temporizador.segundos *100)
             if not temporizador.corriendo:
+                utils.listarUsuario(sorted(clientes, key=lambda x: x.conteo), -1)
                 temporizador.detener()
                 break
     except Exception as e:
@@ -44,6 +43,7 @@ def main():
 
 def pasarBufer(clientes, segundos):
     global servidores
+    global contador
 
     servidores_filtrados = filter(lambda x: x.cliente, servidores)
 
@@ -54,7 +54,7 @@ def pasarBufer(clientes, segundos):
     if(menorTiempo.acomulado >= segundos):
         return True
     
-    #Obtener el clientes con hll menor a menorTiempo.horaSalida y que esten en estado 0
+    #Obtener el clientes con hll menor a menorTiempo.horaSalida y que esten en estado 0 y posteriormente pasarlos a estado 1
     for i in range(len(clientes)):
         if(clientes[i].hllgada <= menorTiempo.acomulado and clientes[i].estado == 0):
             clientes[i].estado = 1
@@ -64,28 +64,20 @@ def pasarBufer(clientes, segundos):
     
     menorTiempo.liberarCliente()
 
-    clientesEnBuffer = list(filter(lambda x: x.estado == 2 , clientes))
-    if((3 - len(clientesEnBuffer)) > 0):
-        lst = sorted(list(filter(lambda x: x.estado == 1, clientes)), key=lambda x: x.tiempoEsperaBonificacion, reverse=True )
-        for i in range(len(lst)):
-            if(i<= (3 - len(clientesEnBuffer)) and len(list(filter(lambda x: x.estado == 2 , clientes))) < 3):
-                lst[i].estado = 2
-            else:
-                break
+    #Pasar clientes de estado 1 a 2 si hay un bufer disponible
+    fullBuffer(clientes)
+
 
     #Pasar clientes de estado 2 a 3 si hay un servidor disponible, debe ser el mayor en tiempoEsperaBonificacion
     clientesEnBuffer = list(filter(lambda x: x.estado == 2 , clientes))
     if(len(clientesEnBuffer) > 0):
-        mayorTiempo = max(clientesEnBuffer, key=lambda x: x.tiempoEsperaBonificacion)
+        mayorTiempo = min(clientesEnBuffer, key=lambda x: x.conteo)
         menorTiempo.setCliente(mayorTiempo)
     
 
 
     # Pasar de estado 1 a 2 si hay un bufer disponible
-    clientesABuffer = list(filter(lambda x: x.estado == 1, clientes))
-    if(len(clientesABuffer) > 0):
-        mayorTiempoEsperaBonificacion = max(clientesABuffer, key=lambda x: x.tiempoEsperaBonificacion)
-        mayorTiempoEsperaBonificacion.estado = 2
+    fullBuffer(clientes)
 
     
     clientesEnServicio = list(filter(lambda x: x.estado == 3, clientes))
@@ -102,13 +94,44 @@ def pasarBufer(clientes, segundos):
     utils.listarUsuario(clientesEnLista, 1)
     print('\n')
     print("En buffer")
-    utils.listarUsuario(clientesEnBuffer, 2)
+    utils.listarUsuario(sorted(clientesEnBuffer,key=lambda x: x.conteo) , 2)
     print('\n')
     print("En servicio")
     utils.listarUsuario(clientesEnServicio, 3)
 
-    print("Tiempo: ", segundos)
+    #print("\nTiempo: ", segundos)
 
     return len(clientesEnEspera) > 0 or len(clientesEnLista) > 0 or len(clientesEnBuffer) > 0 or len(clientesEnServicio) > 0
+
+def fullBuffer(clientes):
+    global contador
+    global servidores
+    numEmpresa = 1 if len(servidores) <= 4 else 2
+    while True:
+        clientesEnBuffer = list(filter(lambda x: x.estado == 2 , clientes))
+        clientesEnServicio = list(filter(lambda x: x.estado == 3, clientes))
+        lst = list(filter(lambda x: x.estado == 1, clientes))
+
+        #Si el cliente con más tiempo de espera en la cola es “Especial”, y si hay un cliente especial en el buffer o siendo atendido, éste no podrá pasar al búffer. Es decir, entre los clientes que hay en el búffer y en las cajas, solo puede haber máximo un cliente de tipo “Especial”.
+        if((len(list(filter(lambda x: x.tipo == 'Especial', clientesEnBuffer))) + len(list(filter(lambda x: x.tipo == 'Especial', clientesEnServicio)))) > 0):
+            lst = list(filter(lambda x: x.tipo != 'Especial', lst))
+
+        # En el sistema (búffer y cajas), solo se podrá tener un máximo de 1 cliente de tipo “Trasnferido”.
+        if((len(list(filter(lambda x: x.tipo == 'Transferido', clientesEnBuffer))) + len(list(filter(lambda x: x.tipo == 'Transferido', clientesEnServicio)))) > 0):
+            lst = list(filter(lambda x: x.tipo != 'Transferido', lst))
+
+
+        # Si un cliente es de tipo “Empresas”, se evalúa la cantidad de cajas disponibles (# de "servidores”, si es mayor a cuatro, se puede tener máximo dos clientes de este tipo en el sistema (búffer y cajas), de lo contrario, se podrá tener máximo un cliente en el sistema.
+        if((len(list(filter(lambda x: x.tipo == 'Empresas', clientesEnBuffer))) + len(list(filter(lambda x: x.tipo == 'Empresas', clientesEnServicio)))) >= numEmpresa):
+            lst = list(filter(lambda x: x.tipo != 'Empresas', lst))
+        
+
+        if(len(clientesEnBuffer) < 3 and len(lst) > 0):
+            lst = sorted(lst, key=lambda x: x.tiempoEsperaBonificacion, reverse=True )
+            lst[0].estado = 2
+            lst[0].conteo = contador
+            contador += 1
+        else:
+            break
 
 main()
