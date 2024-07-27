@@ -6,7 +6,9 @@ class Cliente:
         self.tiempoLlegada = tiempoLlegada
         self.hllgada = hllgada + tiempoLlegada
         self.estado = 0
-        self.horaLlegada = 0
+        self.horaLlegadaBuffer = 0
+        self.horaInicioServicio = 0
+        self.horaSalidaServicio = 0
         self.horaSalida = 0
         self.tiempoEspera = 0
         self.tiempoEsperaBonificacion = 0
